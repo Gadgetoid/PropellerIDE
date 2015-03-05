@@ -5,18 +5,15 @@
 #include <QSplitter>
 #include <QPlainTextEdit> 
 #include <QTreeView> 
+#include <QDesktopServices> 
+#include <QDirIterator> 
 
 #include "SpinParser.h"
-
 #include "treemodel.h"
 
-#include "PortListener.h"
-#include "qext/qextserialport.h"
-#include "Terminal.h"
 #include "Preferences.h"
 #include "editor.h"
 #include "PortConnectionMonitor.h"
-#include "StatusDialog.h"
 #include "spinzip/zipper.h"
 #include "ReferenceTree.h"
 
@@ -57,12 +54,6 @@ public slots:
     void replaceAllClicked();
     void showMessage(const QString & message);
 
-signals:
-    void doPortEnumerate();
-    void updateBackgroundColors();
-
-public slots:
-
     // file menu
     void newProjectTrees();
     void printFile();
@@ -84,8 +75,7 @@ public slots:
     void projectTreeClicked(QModelIndex index);
     void referenceTreeClicked(QModelIndex index);
     void setCurrentPort(int index);
-    void connectButton(bool show = true);
-    void terminalClosed();
+    void spawnTerminal();
     void setProject();
     void preferences();
     void preferencesAccepted();
@@ -94,12 +84,10 @@ public slots:
     void programRun();
     void programDebug();
     void viewInfo();
-    void findHardware(bool showFoundBox = true);
     void closeEvent(QCloseEvent *event);
     void quitProgram();
 
     void enumeratePorts();
-    void enumeratePortsEvent();
     void showFindFrame();
     void hideFindFrame();
     void showBrowser();
@@ -116,10 +104,7 @@ private:
     void clearSession();
 
     void getApplicationSettings();
-    int  checkCompilerInfo();
-    QStringList getCompilerParameters(QString compilerOptions);
     void checkAndSaveFiles();
-    Editor *createEditor();
 
     bool eventFilter(QObject *target, QEvent *event);
 
@@ -129,16 +114,13 @@ private:
     void setupProjectMenu();
     void setupHelpMenu();
 
-    void setupToolBars();
     void setupProjectTools(QSplitter *vsplit);
-    void addToolButton(QToolBar *bar, QToolButton *btn, QString imgfile);
     void openTreeFile(QString fileName);
     void updateProjectTree(QString fileName);
     void updateSpinProjectTree(QString fileName);
     void updateReferenceTree(QString fileName, QString text);
     void updateSpinReferenceTree(QString fileName, QString includes, QString objname, int level);
 
-    void checkConfigSerialPort();
     QFrame *newFindFrame(QSplitter *split);
 
     typedef enum COMPILE_TYPE { COMPILE_ONLY, COMPILE_RUN, COMPILE_BURN } COMPILE_TYPE_T;
@@ -147,6 +129,7 @@ private:
 
     QString     spinCompiler;
     QString     spinIncludes;
+    QString     spinTerminal;
     QString     spinLoader;
 
     QToolBar    *ctrlToolBar;
@@ -189,17 +172,7 @@ private:
     TreeModel       *projectModel;
     TreeModel       *referenceModel;
 
-    QStatusBar  statusbar;
-
     QComboBox   *cbPort;
-    PortListener *portListener;
-    Terminal    *term;
-    int         termXpos;
-    int         termYpos;
-
-    QProcess    *proc;
-
-    QString compileResult;
 
     PortConnectionMonitor *portConnectionMonitor;
 
@@ -208,7 +181,6 @@ private:
     enum { LoadRunHubRam = 1 };
     enum { LoadRunEeprom = 2 };
 
-    StatusDialog *statusDialog;
     QMutex      statusMutex;
     bool        statusDone;
 

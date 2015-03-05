@@ -1,4 +1,4 @@
-![the hat](gfx/propellerhat.png) PropellerIDE [![Build Status](https://travis-ci.org/parallaxinc/PropellerIDE.svg?branch=master)](https://travis-ci.org/parallaxinc/PropellerIDE)
+![the hat](icons/propellerhat.png) PropellerIDE [![Build Status](https://travis-ci.org/parallaxinc/PropellerIDE.svg?branch=master)](https://travis-ci.org/parallaxinc/PropellerIDE)
 ============
 
 PropellerIDE is an easy-to-use, cross-platform development tool for the Parallax Propeller microcontroller.
@@ -51,9 +51,9 @@ PropellerIDE is written in C++ with Qt.
 
 ## Screenshots
 
-![classic theme](gfx/screenshots/classic.png "Classic theme")
+![classic theme](icons/screenshots/classic.png "Classic theme")
 
-![ice theme](gfx/screenshots/ice.png "Ice theme")
+![ice theme](icons/screenshots/ice.png "Ice theme")
 
 ## Building
 
@@ -94,7 +94,7 @@ sudo apt-get update
 Install the required dependencies.
 
 ```
-sudo apt-get install git make g++ qt5-default zlib1g-dev
+sudo apt-get install git make g++ qt5-default libqt5serialport5 zlib1g-dev libudev-dev
 ```
 
 Checkout the project.

@@ -69,7 +69,7 @@
 
 #elif defined(Q_OS_UNIX)
   #define APP_EXTENSION            ""
-  #define APP_RESOURCES_PATH       "/.."
+  #define APP_RESOURCES_PATH       "/../share/propelleride"
 
 #else
   #error "We don't support that OS yet..."
@@ -77,6 +77,7 @@
 
 #define DEFAULT_COMPILER            "/openspin"  APP_EXTENSION 
 #define DEFAULT_LOADER              "/p1load"    APP_EXTENSION
+#define DEFAULT_TERMINAL            "/propterm"  APP_EXTENSION
 
 class Preferences : public QDialog
 {
@@ -104,6 +105,7 @@ public slots:
     void browseCompiler();
     void browseLibrary();
     void browseLoader();
+    void browseTerminal();
     void accept();
     void reject();
     void updateColor(int key, const QColor & color);
@@ -124,6 +126,7 @@ private:
     PathSelector * compilerpath;
     PathSelector * loaderpath;
     PathSelector * librarypath;
+    PathSelector * terminalpath;
 
     QString     tabSpacesStr;
     QCheckBox   autoCompleteEnable;

@@ -5,9 +5,8 @@
 #include <QToolBar> 
 #include <QFileDialog> 
 #include <QMenu> 
-
-#include "StatusDialog.h"
-#include "qext/qextserialenumerator.h"
+#include <QSerialPortInfo>
+#include <QProcess>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), statusMutex(QMutex::Recursive), statusDone(true)
 {
@@ -50,7 +49,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), statusMutex(QMute
     connect(ui.action_Close,SIGNAL(triggered()),editorTabs,SLOT(closeFile()));
 
     connect(editorTabs, SIGNAL(saveAvailable(bool)),ui.action_Save,SLOT(setEnabled(bool)));
+    connect(editorTabs, SIGNAL(saveAvailable(bool)),ui.actionSave_All,SLOT(setEnabled(bool)));
     connect(editorTabs, SIGNAL(closeAvailable(bool)),ui.action_Close,SLOT(setEnabled(bool)));
+    connect(editorTabs, SIGNAL(closeAvailable(bool)),ui.actionClose_All,SLOT(setEnabled(bool)));
 
 
     // Edit Menu
@@ -84,12 +85,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), statusMutex(QMute
 
 
     // Project Menu
-    connect(ui.actionIdentify,  SIGNAL(triggered()), this, SLOT(findHardware()));
     connect(ui.actionView_Info, SIGNAL(triggered()), this, SLOT(viewInfo()));
     connect(ui.actionBuild,     SIGNAL(triggered()), this, SLOT(programBuild()));
     connect(ui.actionRun,       SIGNAL(triggered()), this, SLOT(programRun()));
     connect(ui.actionBurn,      SIGNAL(triggered()), this, SLOT(programBurnEE()));
-    connect(ui.actionTerminal,  SIGNAL(triggered()), this, SLOT(connectButton()));
+    connect(ui.actionTerminal,  SIGNAL(triggered()), this, SLOT(spawnTerminal()));
 
     // Help Menu
     connect(ui.actionPropeller_Datasheet,   SIGNAL(triggered()), this, SLOT(propellerDatasheet()));
@@ -109,8 +109,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), statusMutex(QMute
 //    ctrlToolBar->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);
 //    ctrlToolBar->addWidget(cbPort);
 
-//    setStatusBar(ui.statusbar);
-
     updateRecentFileActions();
 
     /* start with an empty file if fresh install */
@@ -125,34 +123,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), statusMutex(QMute
 
     getApplicationSettings();
 
-    /* setup the terminal dialog box */
-    term = new Terminal(this);
-
-    /* setup the port listener */
-    portListener = new PortListener(this, term->getEditor());
-    portListener->setTerminalWindow(term->getEditor());
-    connect(&builder,SIGNAL(terminalReceived(QString)), portListener, SLOT(appendConsole(QString)));
-
-    term->setPortListener(portListener);
-
-    connect(term,SIGNAL(accepted()),this,SLOT(terminalClosed()));
-    connect(term,SIGNAL(rejected()),this,SLOT(terminalClosed()));
-
     /* get available ports at startup */
     enumeratePorts();
 
     portConnectionMonitor = new PortConnectionMonitor();
-    connect(portConnectionMonitor, SIGNAL(portChanged()), this, SLOT(enumeratePortsEvent()));
-
-    /* Do this before using the dialog. */
-    statusDialog = new StatusDialog(this);
-    portListener->setStatusDialog(statusDialog);
+    connect(portConnectionMonitor, SIGNAL(portChanged()), this, SLOT(enumeratePorts()));
 
     connect(this,SIGNAL(signalStatusDone(bool)),this,SLOT(setStatusDone(bool)));
 
     loadSession();
 
     installEventFilter(this);
+
 }
 
 void MainWindow::loadSession()
@@ -204,6 +186,7 @@ void MainWindow::getApplicationSettings()
     spinCompiler = settings.value("Compiler").toString();
     spinLoader = settings.value("Loader").toString();
     spinIncludes = settings.value("Library").toString();
+    spinTerminal = settings.value("Terminal").toString();
 
     settings.endGroup();
 }
@@ -248,7 +231,6 @@ void MainWindow::closeEvent(QCloseEvent *e)
         return;
     }
 
-    portListener->close();
     portConnectionMonitor->stop();
 
     QSettings().setValue("windowSize",saveGeometry());
@@ -378,18 +360,8 @@ void MainWindow::showBrowser()
 void MainWindow::setCurrentPort(int index)
 {
     QString portName = cbPort->itemText(index);
-    term->setPortName(portName);
+    qDebug() << "Item text: " << portName;
     cbPort->setCurrentIndex(index);
-    if(portName.length()) {
-        portListener->init(portName, term->getBaud());  // signals get hooked up internally
-#ifdef Q_OS_WIN
-        // do this so that the handle will change for windows
-        if(portListener->isOpen()) {
-            portListener->close();
-            portListener->open();
-        }
-#endif
-    }
 }
 
 void MainWindow::checkAndSaveFiles()
@@ -509,10 +481,7 @@ int  MainWindow::runCompiler(COMPILE_TYPE type)
     checkAndSaveFiles();
 
     if(fileName.contains(".spin")) {
-        statusDialog->init("Compiling Program", QFileInfo(this->projectFile).fileName());
-        builder.setParameters(spinCompiler, spinLoader, spinIncludes, projectFile, compileResult);
-
-        statusDialog->stop();
+        builder.setParameters(spinCompiler, spinLoader, spinIncludes, projectFile);
 
         copts = "-b";
         rc = builder.runCompiler(copts);
@@ -542,40 +511,23 @@ int  MainWindow::loadProgram(int type)
     }
     emit signalStatusDone(false);
 
-    bool stat = portListener->isOpen();
     if(cbPort->currentText().length() == 0)
     {
         QMessageBox::critical(this,tr("Propeller Load"), tr("Port not available. Please connect Propeller board."), QMessageBox::Ok);
         goto endLoadProgram;
     }
 
-    // changing selected port now changes terminal port
-    if(cbPort->currentText().compare(portListener->getPortName()) != 0) {
-        setCurrentPort(cbPort->currentIndex());
-        term->setPortName(cbPort->currentText());
-    }
-    if(stat) {
-        portListener->close();
-    }
-
-    portListener->setLoadEnable(true);
     switch (type) {
         case MainWindow::LoadRunHubRam:
-            copts += "-r -p"+portListener->getPortName();
+            copts += "-r -p"+cbPort->currentText();
             rc = builder.loadProgram(copts);
             break;
         case MainWindow::LoadRunEeprom:
-            copts += "-e -p"+portListener->getPortName();
+            copts += "-e -p"+cbPort->currentText();
             rc = builder.loadProgram(copts);
             break;
         default:
             break;
-    }
-    portListener->setLoadEnable(false);
-
-    if(stat) {
-        portListener->init(cbPort->currentText(),term->getBaud());
-        portListener->open();
     }
 
 endLoadProgram:
@@ -588,9 +540,6 @@ void MainWindow::programBurnEE()
     if(runCompiler(COMPILE_BURN))
         return;
 
-    if(cbPort->itemText(cbPort->currentIndex()).compare("AUTO") == 0) {
-        findHardware(false);
-    }
     setCurrentPort(cbPort->currentIndex());
 
     loadProgram(MainWindow::LoadRunEeprom);
@@ -601,9 +550,6 @@ void MainWindow::programRun()
     if(runCompiler(COMPILE_RUN))
         return;
 
-    if(cbPort->itemText(cbPort->currentIndex()).compare("AUTO") == 0) {
-        findHardware(false);
-    }
     setCurrentPort(cbPort->currentIndex());
 
     loadProgram(MainWindow::LoadRunHubRam);
@@ -614,21 +560,11 @@ void MainWindow::programDebug()
     if(runCompiler(COMPILE_RUN))
         return;
 
-    if(cbPort->itemText(cbPort->currentIndex()).compare("AUTO") == 0)
-    {
-        findHardware(false);
-    }
     setCurrentPort(cbPort->currentIndex());
-
-    term->getEditor()->clear();
-    portListener->init(cbPort->currentText(), term->getBaud());
-    setCurrentPort(cbPort->currentIndex());
-    portListener->open();
 
     if(!loadProgram(MainWindow::LoadRunHubRam))
     {
-        ui.actionTerminal->setChecked(true);
-        connectButton(true);
+        spawnTerminal();
     }
 }
 
@@ -645,75 +581,6 @@ void MainWindow::viewInfo()
 
 
 }
-
-void MainWindow::findHardware(bool showFoundBox)
-{
-    int count = 0;
-    QString savePort;
-    QString currentPort = cbPort->itemText(cbPort->currentIndex());
-
-    // if find in progress, ignore request
-    if(!statusDone) return;
-
-    emit signalStatusDone(false);
-
-    bool stat = portListener->isOpen();
-    if(stat)
-    {
-        savePort = portListener->getPortName();
-        portListener->close();
-    }
-
-    statusDialog->init("Searching for Propellers", "");
-    portConnectionMonitor->stop();
-
-    for(int n = 0; n < this->cbPort->count(); n++)
-    {
-        QString portstr = cbPort->itemText(n);
-        if(portstr.compare("AUTO") == 0)
-        {
-            continue;
-        }
-        portListener->init(portstr, term->getBaud());
-        if(portListener->isDevice(portstr))
-        {
-            count++;
-            if(currentPort.compare("AUTO") == 0)
-            {
-                cbPort->setCurrentIndex(n);
-            }
-        }
-    }
-    portConnectionMonitor->start();
-
-    if(!count) {
-        if(this->cbPort->count())
-            statusDialog->addMessage("\nPropeller not found on any port.");
-        else
-            statusDialog->addMessage("Please connect a serial port.");
-        statusDialog->stop();
-    }
-    else {
-        statusDialog->stop();
-        if(showFoundBox) {
-            QMessageBox::information(this,tr("Propeller found"), statusDialog->getMessage());
-        }
-    }
-
-    if(stat) {
-        portListener->init(savePort, term->getBaud());
-        portListener->open();
-    }
-
-    emit signalStatusDone(true);
-}
-
-void MainWindow::terminalClosed()
-{
-    ui.actionTerminal->setChecked(false);
-    connectButton(false);
-}
-
 
 void MainWindow::findMultilineComment(QPoint point)
 {
@@ -1019,134 +886,36 @@ void MainWindow::updateSpinReferenceTree(QString fileName, QString includes, QSt
     }
 }
 
-
-void MainWindow::checkConfigSerialPort()
-{
-    if(!cbPort->count())
-    {
-        enumeratePorts();
-    }
-    else
-    {
-        QString name = cbPort->currentText();
-        QList<QextPortInfo> ports = QextSerialEnumerator::getPorts();
-        int index = -1;
-        for (int i = 0; i < ports.size(); i++)
-        {
-            if (ports.at(i).portName.contains(name, Qt::CaseInsensitive))
-            {
-                index = i;
-                break;
-            }
-        }
-        if(index < 0)
-        {
-            enumeratePorts();
-        }
-    }
-}
-
-void MainWindow::enumeratePortsEvent()
-{
-    enumeratePorts();
-
-    // need to check if the port we are using disappeared.
-    bool notFound = true;
-    QString plPortName = this->term->getPortName();
-    for(int n = this->cbPort->count()-1; n > -1; n--)
-    {
-        QString name = cbPort->itemText(n);
-        if(!name.compare(plPortName))
-        {
-            notFound = false;
-        }
-    }
-
-    if (notFound)
-    {
-        ui.actionTerminal->setChecked(false);
-    }
-    else
-    {
-        ui.actionTerminal->setChecked(true);
-    }
-
-    if(cbPort->count() > 1) {
-        if(isActiveWindow())
-            cbPort->showPopup();
-    }
-
-}
-
 void MainWindow::enumeratePorts()
 {
     if(cbPort == NULL)
         return;
 
     cbPort->clear();
-    cbPort->addItem("AUTO");
 
-    QList<QextPortInfo> ports = QextSerialEnumerator::getPorts();
-    QStringList stringlist;
-    QString name;
-    stringlist << "List of ports:";
-
-    for (int i = 0; i < ports.size(); i++) {
-        stringlist << "port name:" << ports.at(i).portName;
-        stringlist << "friendly name:" << ports.at(i).friendName;
-        stringlist << "physical name:" << ports.at(i).physName;
-        stringlist << "enumerator name:" << ports.at(i).enumName;
-        stringlist << "vendor ID:" << QString::number(ports.at(i).vendorID, 16);
-        stringlist << "product ID:" << QString::number(ports.at(i).productID, 16);
-        stringlist << "===================================";
-#if defined(Q_OS_WIN32)
-        name = ports.at(i).portName;
-        if(name.contains(QString("COM"),Qt::CaseInsensitive)) {
-            //cbPort->addItem(name, QVariant(ports.at(i).physName));
-            cbPort->addItem(name);
-        }
-#elif defined(Q_OS_MAC)
-        name = ports.at(i).portName;
-        if(name.indexOf("cu.usbserial",0,Qt::CaseInsensitive) > -1)
-            cbPort->addItem(name);
-#else
-        name = ports.at(i).physName;
-        cbPort->addItem(name);
-#endif
+    QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
+    foreach(QSerialPortInfo port, ports)
+    {
+//        qDebug() << port.systemLocation();
+        if (!port.systemLocation().contains("ttyS"))
+            cbPort->addItem(port.systemLocation());
     }
-    if(!cbPort->count()) {
-        ui.actionTerminal->setCheckable(false);
+    if(cbPort->count())
+    {
+        cbPort->setEnabled(true);
+        ui.actionTerminal->setEnabled(true);
     }
-    else {
-        ui.actionTerminal->setCheckable(true);
+    else
+    {
+        cbPort->setEnabled(false);
+        ui.actionTerminal->setEnabled(false);
     }
-    QApplication::processEvents();
 }
 
-void MainWindow::connectButton(bool show)
+void MainWindow::spawnTerminal()
 {
-    if(ui.actionTerminal->isChecked()) {
-        ui.actionTerminal->setDisabled(true);
-        if(!portListener->isOpen()) {
-            qDebug() << "connect enable port";
-            portListener->init(cbPort->currentText(), term->getBaud());
-            setCurrentPort(cbPort->currentIndex());
-            portListener->open();
-        }
-        ui.actionTerminal->setDisabled(false);
-        term->setPortEnabled(true);
-        term->setPortName(portListener->getPort()->portName());
-        if(show) {
-            term->show();
-            term->activateWindow();
-            term->getEditor()->setFocus();
-        }
-    }
-    else {
-        term->setPortEnabled(false);
-        portListener->close();
-        term->hide();
-    }
+    QProcess * termtime = new QProcess();
+    termtime->start(spinTerminal);
 }
 
 void MainWindow::setupProjectTools(QSplitter *vsplit)

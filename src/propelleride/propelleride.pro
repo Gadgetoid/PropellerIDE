@@ -1,17 +1,6 @@
-isEmpty(PREFIX):PREFIX = /usr/local
-
 TEMPLATE = app
 TARGET = propelleride
-
-macx {
-    target.path = $${PREFIX}/MacOS
-}
-unix:!macx {
-    target.path = $${PREFIX}/share/propelleride/bin
-}
-win32 {
-    target.path = $${PREFIX}/
-}
+QT += gui widgets serialport
 
 !greaterThan(QT_MAJOR_VERSION, 4): {
     error("PropellerIDE requires Qt5.2 or greater")
@@ -19,21 +8,13 @@ win32 {
 !greaterThan(QT_MINOR_VERSION, 1): {
     error("PropellerIDE requires Qt5.2 or greater")
 }
-QT += gui widgets
 
 CONFIG += console
 CONFIG -= debug_and_release app_bundle
 
-INSTALLS += target
-
 INCLUDEPATH += . ..
 
-LIBS += -L$${OUT_PWD}/../qext/ -lqext
 LIBS += -L$${OUT_PWD}/../spinzip/ -lspinzip
-
-isEmpty(VERSION_ARG):VERSION_ARG = 0.0.0
-VERSION_ARG = '\\"$${VERSION_ARG}\\"'
-DEFINES += VERSION=\"$${VERSION_ARG}\"
 
 SOURCES += \
     main.cpp \
@@ -44,20 +25,15 @@ SOURCES += \
     treeitem.cpp \
     clickable.cpp \
     PathSelector.cpp \
-    PortListener.cpp \
     Preferences.cpp \
     PortConnectionMonitor.cpp \
     ReferenceTree.cpp \
     editor.cpp \
     status.cpp \
-    StatusDialog.cpp \
     SpinHighlighter.cpp \
     SpinParser.cpp \
-    Terminal.cpp \
-    Console.cpp \
     ColorScheme.cpp \
     ColorChooser.cpp \
-    termprefs.cpp \
     FileManager.cpp \
     BuildManager.cpp \
 
@@ -68,7 +44,6 @@ HEADERS  += \
     treeitem.h \
     clickable.h \
     PathSelector.h \
-    PortListener.h \
     Preferences.h \
     PortConnectionMonitor.h \
     ReferenceTree.h \
@@ -76,18 +51,11 @@ HEADERS  += \
     SpinHighlighter.h \
     SpinParser.h \
     status.h \
-    StatusDialog.h \
-    Terminal.h \
-    Console.h \
-    termprefs.h \
     ColorChooser.h \
     ColorScheme.h \
     templates/Singleton.h \
     FileManager.h \
     BuildManager.h \
-
-TRANSLATIONS += \
-    translations/propelleride_zn.ts
 
 OTHER_FILES +=
 
@@ -115,3 +83,10 @@ win32 {
     LIBS            += -L$$PWD -lz
     RC_FILE         = propelleride.rc
 }
+
+TRANSLATIONS += \
+    translations/propelleride.ts \ 
+    translations/propelleride_es.ts \
+    translations/propelleride_zn.ts \
+    translations/propelleride_fake.ts \
+

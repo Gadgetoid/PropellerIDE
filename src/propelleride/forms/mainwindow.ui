@@ -15,10 +15,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="../icons/icons.qrc">
-    <normaloff>:/icons/project-identify.png</normaloff>:/icons/project-identify.png</iconset>
-  </property>
-  <property name="windowOpacity">
-   <double>0.300000000000000</double>
+    <normaloff>:/icons/icon.png</normaloff>:/icons/icon.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
@@ -89,7 +86,6 @@
     <property name="title">
      <string>&amp;Project</string>
     </property>
-    <addaction name="actionIdentify"/>
     <addaction name="actionView_Info"/>
     <addaction name="actionBuild"/>
     <addaction name="actionRun"/>
@@ -148,7 +144,6 @@
    <addaction name="action_Save"/>
    <addaction name="actionSave_As"/>
    <addaction name="separator"/>
-   <addaction name="actionIdentify"/>
    <addaction name="actionBuild"/>
    <addaction name="actionRun"/>
    <addaction name="actionBurn"/>
@@ -646,9 +641,6 @@
    </property>
   </action>
   <action name="actionTerminal">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
    <property name="icon">
     <iconset resource="../icons/icons.qrc">
      <normaloff>:/icons/project-terminal.png</normaloff>:/icons/project-terminal.png</iconset>
