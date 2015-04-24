@@ -16,48 +16,8 @@
 #include "ColorScheme.h"
 #include "PathSelector.h"
 
-#define tabSpacesKey        "TabSpacesCount"
-
-#define enableKeyClearScreen        "enableClearScreen"
-#define enableKeyClearScreen16      "enableClearScreen16"
-#define enableKeyHomeCursor         "enableHomeCursor"
-#define enableKeyPosXYCursor        "enablePosXYCursor"
-#define enableKeyMoveCursorLeft     "enableMoveCursorLeft"
-#define enableKeyMoveCursorRight    "enableMoveCursorRight"
-#define enableKeyMoveCursorUp       "enableMoveCursorUp"
-#define enableKeyMoveCursorDown     "enableMoveCursorDown"
-#define enableKeyBeepSpeaker        "enableBeepSpeaker"
-#define enableKeyBackspace          "enableBackspace"
-#define enableKeyTab                "enableTab"
-#define enableKeyCReturn            "enableCReturn"
-#define enableKeyClearToEOL         "enableClearToEOL"
-#define enableKeyClearLinesBelow    "enableClearLinesBelow"
-#define enableKeyNewLine            "enableNewLine"
-#define enableKeyPosCursorX         "enablePosCursorX"
-#define enableKeyPosCursorY         "enablePosCursorY"
-#define enableKeySwapNLCR           "enableSwapNLCR"
-#define enableKeyAddNLtoCR          "enableAddNLtoCR"
-#define enableKeyEnterIsNL          "enableEnterIsNL"
-
-#define termKeyForeground           "termForeground"
-#define termKeyBackground           "termBackground"
-#define termKeyFontFamily           "termFontFamily"
-#define termKeyFontSize             "termFontSize"
-#define termKeyFontWeight           "termFontWeight"
-#define termKeyFontItalic           "termFontItalic"
-#define termKeyWrapMode             "termWrapMode"
-#define termKeyPageLineSize         "termPageLineSize"
-#define termKeyBufferLines          "termBufferLines"
-#define termKeyTabSize              "termTabSize"
-#define termKeyHexMode              "termHexMode"
-#define termKeyHexDump              "termHexDumpMode"
-
-#define terminalEchoOn              "termKeyEchoOn"
-#define termKeyBaudRate             "termBaudRate"
-
 #define enableAutoComplete          "enableAutoComplete"
 #define enableSpinSuggest           "enableSpinSuggest"
-
 
 #if defined(Q_OS_WIN) || defined(CYGWIN)
   #define APP_EXTENSION            ".exe"
@@ -76,7 +36,7 @@
 #endif
 
 #define DEFAULT_COMPILER            "/openspin"  APP_EXTENSION 
-#define DEFAULT_LOADER              "/p1load"    APP_EXTENSION
+#define DEFAULT_LOADER              "/propman"   APP_EXTENSION
 #define DEFAULT_TERMINAL            "/propterm"  APP_EXTENSION
 
 class Preferences : public QDialog
@@ -84,7 +44,6 @@ class Preferences : public QDialog
     Q_OBJECT
 public:
     explicit Preferences(QWidget *parent = 0);
-    void showPreferences();
 
     int  getTabSpaces();
     bool getAutoCompleteEnable();
@@ -109,6 +68,7 @@ public slots:
     void accept();
     void reject();
     void updateColor(int key, const QColor & color);
+    void showPreferences();
 
 private slots:
     void loadTheme(int index);

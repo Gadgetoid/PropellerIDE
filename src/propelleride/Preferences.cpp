@@ -1,3 +1,5 @@
+#include "Preferences.h"
+
 #include <QApplication>
 #include <QDialog>
 #include <QFileInfo>
@@ -16,9 +18,7 @@
 #include <QDebug>
 #include <QDirIterator>
 
-#include "Preferences.h"
 #include "ColorChooser.h"
-
 
 Preferences::Preferences(QWidget *parent) : QDialog(parent)
 {
@@ -80,7 +80,7 @@ void Preferences::setupOptions()
     spinSuggestEnable.setChecked(enss.toBool());
     edlayout->addRow(new QLabel(tr("Enable Code Suggestion")), &spinSuggestEnable);
 
-    QVariant tabsv = settings.value(tabSpacesKey,"4");
+    QVariant tabsv = settings.value("tabSpaces","4");
     if(tabsv.canConvert(QVariant::String)) {
         tabspaceLedit.setText(tabsv.toString());
     }
@@ -242,7 +242,7 @@ void Preferences::setupHighlight()
     QSettings settings;
 
     // this routine is repeated often and needs to be abstracted
-    int themeindex = themeEdit.findData(settings.value("Theme", ":/themes/Dusk_Ocean.theme").toString());
+    int themeindex = themeEdit.findData(settings.value("Theme", ":/themes/Midnight_Grace.theme").toString());
     themeEdit.setCurrentIndex(themeindex);
     loadTheme(themeindex);
     settings.setValue("Theme",themeEdit.itemData(themeEdit.currentIndex()));
@@ -316,7 +316,7 @@ void Preferences::browseLoader()
 {
     loaderpath->browsePath(
             tr("Select Loader"),
-            "Loader (p1load* p2load*);;BST Loader (bstl*)",
+            "propman (propman*);;p1load (p1load* p2load*);;BST Loader (bstl*)",
             false
         );
 }
@@ -349,7 +349,7 @@ void Preferences::accept()
 
     QSettings settings;
 
-    settings.setValue(tabSpacesKey,tabspaceLedit.text());
+    settings.setValue("tabSpaces",tabspaceLedit.text());
 
     settings.setValue(enableAutoComplete,autoCompleteEnable.isChecked());
     settings.setValue(enableSpinSuggest,spinSuggestEnable.isChecked());
